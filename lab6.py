@@ -97,5 +97,5 @@ def main():
     df.to_csv('times.csv', index=False)
     plot_times(df)
 
-if name == "__main__":
+if __name__ == "__main__":
     main()
