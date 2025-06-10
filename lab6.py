@@ -1,107 +1,81 @@
-#Задана рекуррентная функция.
+#Задана рекуррентная функция. 
 #Область определения функции – натуральные числа. 
 #Написать программу сравнительного вычисления данной функции рекурсивно и итерационно. 
 #Определить границы применимости рекурсивного и итерационного подхода. 
 #Результаты сравнительного исследования времени вычисления представить в табличной и графической форме в виде отчета по лабораторной работе.
-#29) F(1) = 1; G(1) = 1; F(n) = (-1)n*(2*F(n–1) – G(n–1)), G(n) = 2*F(n–1) /(2n)! + G(n–1), при n >=2
-import time
+#13.	F(1) = 1; G(1) = 1; F(n) = (-1)n*( (n–1)! – G(n–1)), G(n) = F(n–1), при n >=2
+import timeit
 import matplotlib.pyplot as plt
-import pandas as pd
-from decimal import Decimal, getcontext
+from tabulate import tabulate
 
-getcontext().prec = 50
-
-# Факториал
-def factorial(n):
-    result = Decimal(1)
-    for i in range(1, n + 1):
-        result *= i
-    return result
-
-# Рекурсивные F и G
-def F_recursive(n):
+def F_and_G_rec(n, factorial=1):
     if n == 1:
-        return 1
-    return (-1) ** n * (2 * F_recursive(n - 1) - G_recursive(n - 1))
+        return 1, 1, factorial
+    F_prev, G_prev, prev_factorial = F_and_G_rec(n - 1, factorial * (n - 1))
+    sign = 1 if n % 2 == 0 else -1
+    F_current = sign * (prev_factorial - G_prev)
+    G_current = F_prev
+    return F_current, G_current, prev_factorial
 
-def G_recursive(n):
+def iter_F_and_G(n):
     if n == 1:
-        return 1
-    F_prev, G_prev = F_recursive(n - 1), G_recursive(n - 1)
-    return 2 * F_prev / (factorial(2 * n)) + G_prev
-
-# Итерационные F и G
-def FG_iterative(n):
-    F, G = [0] * (n + 1), [0] * (n + 1)
-    F[1], G[1] = 1, 1
+        return 1, 1
+    F_prev, G_prev = 1, 1
+    factorial = 1
     for i in range(2, n + 1):
-        F[i] = (-1) ** i * (2 * F[i - 1] - G[i - 1])
-        G[i] = 2 * F[i - 1] / (factorial(2 * i)) + G[i - 1]
-    return F[n], G[n]
+        factorial *= (i - 1)
+        sign = 1 if i % 2 == 0 else -1
+        F_current = sign * (factorial - G_prev)
+        G_current = F_prev
+        F_prev, G_prev = F_current, G_current
+    return F_prev, G_prev
 
-# Сравнение времени
-def measure_time(max_n):
-    times = {'n': [], 'F_rec': [], 'F_iter': [], 'G_rec': [], 'G_iter': []}
-    for n in range(1, max_n + 1):
-        times['n'].append(n)
-        
-        start = time.perf_counter()
-        try:
-            F_recursive(n)
-            times['F_rec'].append(time.perf_counter() - start)
-        except RecursionError:
-            times['F_rec'].append(float('inf'))
-            
-        start = time.perf_counter()
-        times['F_iter'].append(time.perf_counter() - start)
-        FG_iterative(n)[0]
-        
-        start = time.perf_counter()
-        try:
-            G_recursive(n)
-            times['G_rec'].append(time.perf_counter() - start)
-        except RecursionError:
-            times['G_rec'].append(float('inf'))
-            
-        start = time.perf_counter()
-        times['G_iter'].append(time.perf_counter() - start)
-        FG_iterative(n)[1]
-    
-    return pd.DataFrame(times)
+def measure_time(func, n, repeat=100):
+    return timeit.timeit(lambda: func(n), number=repeat) / repeat * 1000
 
-# Графики
-def plot_times(df):
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(df['n'], df['F_rec'], 'o-', label='F Recursive')
-    plt.plot(df['n'], df['F_iter'], 'x-', label='F Iterative')
-    plt.xlabel('n')
-    plt.ylabel('Time (s)')
-    plt.title('F(n)')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.subplot(1, 2, 2)
-    plt.plot(df['n'], df['G_rec'], 'o-', label='G Recursive')
-    plt.plot(df['n'], df['G_iter'], 'x-', label='G Iterative')
-    plt.xlabel('n')
-    plt.ylabel('Time (s)')
-    plt.title('G(n)')
-    plt.legend()
-    plt.grid(True)
-    
-    plt.tight_layout()
-    plt.savefig('times.png')
-    plt.show()
 
-# Основная программа
-def main():
-    max_n = 10
-    df = measure_time(max_n)
-    print("\nВремя выполнения:")
-    print(df)
-    df.to_csv('times.csv', index=False)
-    plot_times(df)
+n_start = 1
+max_n_rec = 20
+max_n_iter = 20
+results = []
+n_values = range(n_start, max_n_iter + 1)
 
-if __name__ == "__main__":
-    main()
+for n in n_values:
+    try:
+        if n <= max_n_rec:
+            time_rec = measure_time(F_and_G_rec, n)
+        else:
+            time_rec = None
+    except RecursionError:
+        time_rec = None
+
+    time_iter = measure_time(iter_F_and_G, n)
+    results.append({
+        'n': n,
+        'time_rec_ms': time_rec,
+        'time_iter_ms': time_iter
+    })
+
+table = []
+for row in results:
+    table.append([
+        row['n'],
+        f"{row['time_rec_ms']:.4f}" if row['time_rec_ms'] is not None else "N/A",
+        f"{row['time_iter_ms']:.4f}"
+    ])
+print(tabulate(table, headers=['n', 'Рекурсия (мс)', 'Итерация (мс)'], tablefmt='grid'))
+
+
+plt.figure(figsize=(10, 6))
+rec_times = [row['time_rec_ms'] if row['time_rec_ms'] is not None else None for row in results]
+iter_times = [row['time_iter_ms'] for row in results]
+
+plt.plot(n_values, iter_times, label='Итерационный метод', marker='o')
+plt.plot(n_values[:max_n_rec], rec_times[:max_n_rec], label='Рекурсивный метод', marker='s')
+
+plt.xlabel('n')
+plt.ylabel('Время выполнения (мс)')
+plt.title('Сравнение времени выполнения рекурсивного и итерационного методов')
+plt.legend()
+plt.grid(True)
+plt.show()
