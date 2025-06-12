@@ -1,137 +1,69 @@
-import time
-import matplotlib.pyplot as plt
-import pandas as pd
-from decimal import Decimal, getcontext
 import tkinter as tk
-from tkinter import ttk, scrolledtext
-import threading #многопоточность
+from tkinter import scrolledtext
+import itertools
 
-getcontext().prec = 50
+class App:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Генератор комбинаций")
+        self.root.configure(bg='#746363')
 
-def factorial(n):
-    result = Decimal(1)
-    for i in range(1, n + 1):
-        result *= i
-    return result
-def F_recursive(n):
-    if n == 1:
-        return 1
-    return (-1) ** n * (2 * F_recursive(n - 1) - G_recursive(n - 1))
-def G_recursive(n):
-    if n == 1:
-        return 1
-    F_prev, G_prev = F_recursive(n - 1), G_recursive(n - 1)
-    return 2 * F_prev / (factorial(2 * n)) + G_prev
+        tk.Label(root, text="Введите N (положительное число):", background='#a58888').grid(row=0, column=0, sticky="w", padx=10, pady=5,)
+        self.entry_N = tk.Entry(root, background='#a58888')
+        self.entry_N.grid(row=0, column=1, padx=10, pady=5)
 
+        tk.Label(root, text="Введите K (положительное число):", background='#a58888').grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        self.entry_K = tk.Entry(root, background='#a58888')
+        self.entry_K.grid(row=1, column=1, padx=10, pady=5)
 
-def FG_iterative(n):
-    F, G = [0] * (n + 1), [0] * (n + 1)
-    F[1], G[1] = 1, 1
-    for i in range(2, n + 1):
-        F[i] = (-1) ** i * (2 * F[i - 1] - G[i - 1])
-        G[i] = 2 * F[i - 1] / (factorial(2 * i)) + G[i - 1]
-    return F[n], G[n]
+        tk.Label(root, text="Введите бюджет:", background='#a58888').grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        self.entry_budget = tk.Entry(root, background='#a58888')
+        self.entry_budget.grid(row=2, column=1, padx=10, pady=5)
 
+        tk.Label(root, text="Введите цены через запятую:", background='#a58888').grid(row=3, column=0, sticky="w", padx=10, pady=5)
+        self.entry_costs = tk.Entry(root, background='#a58888')
+        self.entry_costs.grid(row=3, column=1, padx=10, pady=5)
 
-def measure_time(max_n):
-    times = {'n': [], 'F_rec': [], 'F_iter': [], 'G_rec': [], 'G_iter': []}
-    for n in range(1, max_n + 1):
-        times['n'].append(n)
+        self.button = tk.Button(root, text="Вычислить", command=self.run_algorithm, background='#a58888')
+        self.button.grid(row=4, column=0, columnspan=2, pady=10)
 
-        start = time.perf_counter()
+        self.output_text = scrolledtext.ScrolledText(root, width=60, height=10, background='#9e8f8f')
+        self.output_text.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
+
+    def algoritm(self, N, K):
+        options = list(range(N)) + [None]
+        return list(itertools.product(options, repeat=K))
+
+    def limit_approach(self, N, K, costs, budget, result_algo):
+        variants = []
+        for choice in result_algo:
+            selected = [i for i in choice if i is not None]
+            total_cost = sum(costs[i] for i in selected)
+            if total_cost <= budget:
+                variants.append(choice)
+        return variants
+
+    def run_algorithm(self):
         try:
-            F_recursive(n)
-            times['F_rec'].append(time.perf_counter() - start)
-        except RecursionError:
-            times['F_rec'].append(float('inf'))
+            N = int(self.entry_N.get())
+            K = int(self.entry_K.get())
+            budget = int(self.entry_budget.get())
+            costs = list(map(int, self.entry_costs.get().split(',')))
+            assert N > 0 and K > 0, "N и K должны быть положительными"
+            assert len(costs) == N, "Количество цен должно совпадать с N"
 
-        start = time.perf_counter()
-        FG_iterative(n)[0]
-        times['F_iter'].append(time.perf_counter() - start)
+            result_algo = self.algoritm(N, K)
+            result_limited = self.limit_approach(N, K, costs, budget, result_algo)
 
-        start = time.perf_counter()
-        try:
-            G_recursive(n)
-            times['G_rec'].append(time.perf_counter() - start)
-        except RecursionError:
-            times['G_rec'].append(float('inf'))
-
-        start = time.perf_counter()
-        FG_iterative(n)[1]
-        times['G_iter'].append(time.perf_counter() - start)
-
-    return pd.DataFrame(times)
+            self.output_text.delete(1.0, tk.END)
+            self.output_text.insert(tk.END, f"Общее количество вариантов: {len(set(result_limited))}\n\n")
+            for variant in result_limited:
+                self.output_text.insert(tk.END, f"{variant}\n")
+        except Exception as e:
+            self.output_text.delete(1.0, tk.END)
+            self.output_text.insert(tk.END, f"Ошибка: {str(e)}")
 
 
-# Графики
-def plot_times(df):
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(df['n'], df['F_rec'], 'o-', label='F Recursive')
-    plt.plot(df['n'], df['F_iter'], 'x-', label='F Iterative')
-    plt.xlabel('n')
-    plt.ylabel('Time (s)')
-    plt.title('F(n)')
-    plt.legend()
-    plt.grid(True)
-
-    plt.subplot(1, 2, 2)
-    plt.plot(df['n'], df['G_rec'], 'o-', label='G Recursive')
-    plt.plot(df['n'], df['G_iter'], 'x-', label='G Iterative')
-    plt.xlabel('n')
-    plt.ylabel('Time (s)')
-    plt.title('G(n)')
-    plt.legend()
-    plt.grid(True)
-
-    plt.tight_layout()
-    plt.savefig('times.png')
-    plt.show()
-
-
-# результаты
-def compute_and_display():
-    try:
-        max_n = int(entry_max_n.get())
-        if max_n <= 0:
-            output_text.delete(1.0, tk.END)
-            output_text.insert(tk.END, "Ошибка: Введите положительное число.\n")
-            return
-    except ValueError:
-        output_text.delete(1.0, tk.END)
-        output_text.insert(tk.END, "Ошибка: Введите корректное число.\n")
-        return
-
-    df = measure_time(max_n)
-
-    output_text.delete(1.0, tk.END)
-    output_text.insert(tk.END, "Время выполнения:\n")
-    output_text.insert(tk.END, df.to_string() + "\n")
-
-    df.to_csv('times.csv', index=False)
-
-    # графики в отдельном потоке
-    threading.Thread(target=plot_times, args=(df,), daemon=True).start()
-
-
-#GUI
 root = tk.Tk()
-root.title("Сравнение времени выполнения F(n) и G(n)")
-root.geometry("600x400")
-
-label_instruction = tk.Label(root, text="Введите max_n для вычисления времени выполнения функций F(n) и G(n):")
-label_instruction.pack(pady=5)
-
-
-entry_max_n = tk.Entry(root, width=10)
-entry_max_n.pack(pady=5)
-entry_max_n.insert(0, "7")
-
-btn_compute = tk.Button(root, text="Вычислить", command=compute_and_display)#Кнопка
-btn_compute.pack(pady=5)
-
-output_text = scrolledtext.ScrolledText(root, width=70, height=15, wrap=tk.WORD)#Поле вывода с прокруткой
-output_text.pack(pady=10)
-
-
+app = App(root)
 root.mainloop()
