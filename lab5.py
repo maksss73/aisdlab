@@ -12,8 +12,7 @@ def algoritm(N, K):
 start_time = time.time()
 result_algo = algoritm(N, K)
 end_time = time.time()
-print(f"Алгоритмический подход: {len(result_algo)} вариантов, время выполнения: {end_time - start_time} секунд")
-
+print(f"Алгоритмический подход: {len(result_algo)} вариантов, время выполнения: {(end_time - start_time)*1000:.2f} мс")
 
 def recursive(N, K):
     results = []
@@ -29,23 +28,23 @@ def recursive(N, K):
 start_time = time.time()
 result_rec = recursive(N, K)
 end_time = time.time()
-print(f"Рекурсивный подход: {len(result_rec)} вариантов, время выполнения: {end_time - start_time} секунд")
+print(f"Рекурсивный подход: {len(result_rec)} вариантов, время выполнения: {(end_time - start_time)*1000:.2f} мс")
 
 costs = [1000, 1500, 750, 424, 1800]
 assert len(costs) == N, "Количество цен должно совпадать с N"
 budget = 2300
 
 def limit_approach(N, K, costs, budget):
-    variants = []
-    for combo in range(0, K + 1):
-        for choice in result_algo:
-            selected = [i for i in choice if i is not None]
-            total_cost = sum(costs[i] for i in selected)
-            if total_cost <= budget:
-                variants.append(choice)
-    return variants
+    valid_combinations = []
+
+    for choice in result_algo:
+        selected_items = [i for i in choice if i is not None]
+        total_cost = sum(costs[item] for item in selected_items)
+        if total_cost <= budget:
+            valid_combinations.append(choice)
+    return valid_combinations
 
 start_time = time.time()
 result_limited = limit_approach(N, K, costs, budget)
 end_time = time.time()
-print(f"Подход с ограничениями: {len(result_limited)} вариантов, время выполнения: {end_time - start_time} секунд")
+print(f"Подход с ограничениями: {len(result_limited)} вариантов, время выполнения: {(end_time - start_time)*1000:.2f} мс")
