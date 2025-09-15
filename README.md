@@ -1,0 +1,210 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import math
+import random
+
+# Класс для пятиугольника
+class Pentagon:
+    def __init__(self, x, y, size, color="black"):
+        self.x = x  # центр фигуры
+        self.y = y
+        self.size = size  # размер
+        self.color = color  # цвет
+        # сразу считаем углы
+        self.vertices = self.calculate_vertices()
+
+    # Считаем где будут углы
+    def calculate_vertices(self):
+        points = []
+        # у пятиугольника 5 углов
+        for i in range(5):
+            # вычисляем угол для каждого угла
+            angle = 2 * math.pi * i / 5 - math.pi / 2
+            # координаты угла
+            x_point = self.x + self.size * math.cos(angle)
+            y_point = self.y + self.size * math.sin(angle)
+            points.append((x_point, y_point))
+        return points
+
+    # Делим большой на несколько маленьких
+    def segment(self, segments):
+        small_ones = []
+        for i in range(segments):
+            # делаем каждый следующий меньше
+            ratio = 0.2 + 0.6 * (i / segments)
+            new_size = self.size * ratio
+            # случайный цвет
+            new_color = f"#{random.randint(100, 255):02x}{random.randint(100, 255):02x}{random.randint(100, 255):02x}"
+            # создаем маленький
+            small_ones.append(Pentagon(self.x, self.y, new_size, new_color))
+        return small_ones
+
+    # Двигаем фигуру
+    def move(self, dx, dy):
+        self.x += dx
+        self.y += dy
+        # пересчитываем углы
+        self.vertices = self.calculate_vertices()
+
+    # Меняем цвет
+    def change_color(self, new_color):
+        self.color = new_color
+
+    # Информация для файла
+    def get_info(self):
+        return f"{self.x},{self.y},{self.size},{self.color}"
+
+# Главное окно
+class PentagonApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Работа с пятиугольниками")
+        self.root.geometry("1000x700")
+
+        # все фигуры
+        self.pentagons = []
+        # какая фигура выбрана
+        self.current_pentagon = None
+
+        # холст для рисования
+        self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
+        self.canvas.pack(side=tk.LEFT, padx=10, pady=10)
+
+        # рамка для кнопок
+        button_frame = tk.Frame(root)
+        button_frame.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        # кнопки
+        tk.Button(button_frame, text="Загрузить из файла", command=self.load_from_file).pack(pady=5)
+        tk.Button(button_frame, text="Сохранить в файл", command=self.save_to_file).pack(pady=5)
+        tk.Button(button_frame, text="Добавить пятиугольник", command=self.add_pentagon).pack(pady=5)
+        tk.Button(button_frame, text="Сегментировать", command=self.segment_pentagon).pack(pady=5)
+        tk.Button(button_frame, text="Раскраска", command=self.change_color).pack(pady=5)
+        tk.Button(button_frame, text="Переместить", command=self.move_pentagon).pack(pady=5)
+        tk.Button(button_frame, text="Очистить холст", command=self.clear_canvas).pack(pady=5)
+        tk.Button(button_frame, text="Визуализировать", command=self.visualize).pack(pady=5)
+
+        # клик мышкой
+        self.canvas.bind("<Button-1>", self.select_pentagon)
+
+    # Загружаем из файла
+    def load_from_file(self):
+        filename = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+        if filename:
+            try:
+                with open(filename, 'r') as file:
+                    lines = file.readlines()
+                    for line in lines:
+                        data = line.strip().split(',')
+                        if len(data) == 4:
+                            x, y, size, color = data
+                            x = float(x)
+                            y = float(y)
+                            size = float(size)
+                            pentagon = Pentagon(x, y, size, color)
+                            self.pentagons.append(pentagon)
+                self.visualize()
+                messagebox.showinfo("Успех", "Файл загружен")
+            except:
+                messagebox.showerror("Ошибка", "Ошибка при загрузке файла")
+
+    # Сохраняем в файл
+    def save_to_file(self):
+        filename = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+        if filename:
+            try:
+                with open(filename, 'w') as file:
+                    for pentagon in self.pentagons:
+                        file.write(pentagon.get_info() + '\n')
+                messagebox.showinfo("Успех", "Файл сохранен")
+            except:
+                messagebox.showerror("Ошибка", "Ошибка при сохранении")
+
+    # Добавляем новую фигуру
+    def add_pentagon(self):
+        x = random.randint(100, 700)
+        y = random.randint(100, 500)
+        size = random.randint(30, 80)
+        color = f"#{random.randint(0, 255):02x}{random.randint(0, 255):02x}{random.randint(0, 255):02x}"
+
+        pentagon = Pentagon(x, y, size, color)
+        self.pentagons.append(pentagon)
+        self.visualize()
+
+    # Делим фигуру на части
+    def segment_pentagon(self):
+        if self.current_pentagon:
+            segments = random.randint(3, 6)
+            new_pentagons = self.current_pentagon.segment(segments)
+            self.pentagons.remove(self.current_pentagon)
+            self.pentagons.extend(new_pentagons)
+            self.current_pentagon = None
+            self.visualize()
+        else:
+            messagebox.showwarning("Предупреждение", "Сначала выберите пятиугольник")
+
+    # Меняем цвет
+    def change_color(self):
+        if self.current_pentagon:
+            new_color = f"#{random.randint(0, 255):02x}{random.randint(0, 255):02x}{random.randint(0, 255):02x}"
+            self.current_pentagon.change_color(new_color)
+            self.visualize()
+        else:
+            messagebox.showwarning("Предупреждение", "Сначала выберите пятиугольник")
+
+    # Двигаем фигуру
+    def move_pentagon(self):
+        if self.current_pentagon:
+            dx = random.randint(-50, 50)
+            dy = random.randint(-50, 50)
+            self.current_pentagon.move(dx, dy)
+            self.visualize()
+        else:
+            messagebox.showwarning("Предупреждение", "Сначала выберите пятиугольник")
+
+    # Очищаем всё
+    def clear_canvas(self):
+        self.pentagons = []
+        self.current_pentagon = None
+        self.canvas.delete("all")
+
+    # Рисуем все фигуры
+    def visualize(self):
+        self.canvas.delete("all")
+        for pentagon in self.pentagons:
+            vertices = pentagon.vertices
+            points = []
+            for x, y in vertices:
+                points.extend([x, y])
+
+            if pentagon == self.current_pentagon:
+                self.canvas.create_polygon(points, fill=pentagon.color, outline="red", width=3)
+            else:
+                self.canvas.create_polygon(points, fill=pentagon.color, outline="black", width=2)
+
+    # Выбираем фигуру кликом
+    def select_pentagon(self, event):
+        x, y = event.x, event.y
+        self.current_pentagon = None
+
+        for pentagon in reversed(self.pentagons):
+            if self.is_point_in_pentagon(x, y, pentagon.vertices):
+                self.current_pentagon = pentagon
+                break
+
+        self.visualize()
+
+    # Проверяем попал ли клик в фигуру
+    def is_point_in_pentagon(self, x, y, vertices):
+        min_x = min(v[0] for v in vertices)
+        max_x = max(v[0] for v in vertices)
+        min_y = min(v[1] for v in vertices)
+        max_y = max(v[1] for v in vertices)
+
+        return min_x <= x <= max_x and min_y <= y <= max_y
+
+# Запускаем
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = PentagonApp(root)
+    root.mainloop()
