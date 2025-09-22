@@ -26,18 +26,12 @@ class Pentagon:
             points.append((x_point, y_point))
         return points
 
-    # Делим большой на несколько маленьких
-    def segment(self, segments):
-        small_ones = []
-        for i in range(segments):
-            # делаем каждый следующий меньше
-            ratio = 0.2 + 0.6 * (i / segments)
-            new_size = self.size * ratio
-            # случайный цвет
-            new_color = f"#{random.randint(100, 255):02x}{random.randint(100, 255):02x}{random.randint(100, 255):02x}"
-            # создаем маленький
-            small_ones.append(Pentagon(self.x, self.y, new_size, new_color))
-        return small_ones
+    # Уменьшаем пятиугольник
+    def segment(self):
+        # просто делаем размер меньше
+        self.size = max(10, self.size * 0.7)
+        # пересчитываем углы
+        self.vertices = self.calculate_vertices()
 
     # Двигаем фигуру
     def move(self, dx, dy):
@@ -78,7 +72,7 @@ class PentagonApp:
         tk.Button(button_frame, text="Загрузить из файла", command=self.load_from_file).pack(pady=5)
         tk.Button(button_frame, text="Сохранить в файл", command=self.save_to_file).pack(pady=5)
         tk.Button(button_frame, text="Добавить пятиугольник", command=self.add_pentagon).pack(pady=5)
-        tk.Button(button_frame, text="Сегментировать", command=self.segment_pentagon).pack(pady=5)
+        tk.Button(button_frame, text="Сегментировать", command=self.shrink_pentagon).pack(pady=5)
         tk.Button(button_frame, text="Раскраска", command=self.change_color).pack(pady=5)
         tk.Button(button_frame, text="Переместить", command=self.move_pentagon).pack(pady=5)
         tk.Button(button_frame, text="Очистить холст", command=self.clear_canvas).pack(pady=5)
@@ -131,14 +125,11 @@ class PentagonApp:
         self.pentagons.append(pentagon)
         self.visualize()
 
-    # Делим фигуру на части
-    def segment_pentagon(self):
+    # Уменьшаем выбранный пятиугольник
+    def shrink_pentagon(self):
         if self.current_pentagon:
-            segments = random.randint(3, 6)
-            new_pentagons = self.current_pentagon.segment(segments)
-            self.pentagons.remove(self.current_pentagon)
-            self.pentagons.extend(new_pentagons)
-            self.current_pentagon = None
+            # просто уменьшаем текущий пятиугольник
+            self.current_pentagon.segment()
             self.visualize()
         else:
             messagebox.showwarning("Предупреждение", "Сначала выберите пятиугольник")
