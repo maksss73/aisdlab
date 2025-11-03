@@ -265,3 +265,95 @@ class SeaBattle:
         if self.setup_mode:
             next_ship = self.ships_to_place[self.current_ship_index]
             self.info_label = tk.Label(self.root, text=f"Разместите корабль размером {next_ship}",
+                                       font=("Arial", 12))
+        else:
+            self.info_label = tk.Label(self.root, text="Ваш ход. Кликните по полю компьютера",
+                                       font=("Arial", 12))
+        self.info_label.pack(pady=10)
+
+    def set_direction(self, direction):
+        """Установка направления корабля"""
+        self.current_direction = direction
+
+    def start_game(self):
+        """Начало игры"""
+        self.setup_mode = False
+        # Делаем поле игрока неактивным для кликов
+        for i in range(SIZE):
+            for j in range(SIZE):
+                self.player_buttons[i][j].config(state="disabled")
+
+        # Активируем поле компьютера для выстрелов
+        for i in range(SIZE):
+            for j in range(SIZE):
+                self.computer_buttons[i][j].config(state="normal")
+
+        # Скрываем элементы расстановки
+        self.start_button.pack_forget()
+        self.direction_frame.pack_forget()
+
+        self.info_label.config(text="Ваш ход. Кликните по полю компьютера")
+
+    def shoot(self, row, col):
+        if self.setup_mode or self.game_over:
+            return
+
+        # Если уже стреляли сюда
+        btn = self.computer_buttons[row][col]
+        if btn['bg'] in ['red', 'white']:
+            return
+
+        # Выстрел игрока
+        if self.computer_field[row][col] == 1:
+            btn.config(bg="red", text="X")
+            self.player_hits += 1
+            self.info_label.config(text="Попадание! Стреляйте еще!")
+
+            # Проверка победы
+            if self.player_hits >= 20:  # Всего клеток кораблей
+                self.game_over = True
+                messagebox.showinfo("Победа!", "Вы выиграли!")
+                self.root.quit()
+        else:
+            btn.config(bg="white")
+            self.info_label.config(text="Промах! Ход компьютера...")
+            self.root.update()
+            self.root.after(500, self.computer_turn)
+
+    def computer_turn(self):
+        if self.game_over:
+            return
+
+        # Компьютер стреляет случайно
+        while True:
+            row = random.randint(0, SIZE - 1)
+            col = random.randint(0, SIZE - 1)
+
+            btn = self.player_buttons[row][col]
+            if btn['bg'] not in ['red', 'white']:
+                break
+
+        # Выстрел компьютера
+        if self.player_field[row][col] == 1:
+            btn.config(bg="red", text="X")
+            self.computer_hits += 1
+            self.info_label.config(text="Компьютер попал! Ваш ход.")
+
+            # Проверка проигрыша
+            if self.computer_hits >= 20:
+                self.game_over = True
+                messagebox.showinfo("Поражение!", "Компьютер выиграл!")
+                self.root.quit()
+            else:
+                self.root.after(500, self.computer_turn)  # Компьютер стреляет еще раз
+        else:
+            btn.config(bg="white")
+            self.info_label.config(text="Компьютер промахнулся! Ваш ход.")
+
+    def run(self):
+        self.root.mainloop()
+
+
+if __name__ == "__main__":
+    game = SeaBattle()
+    game.run()
