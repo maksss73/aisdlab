@@ -1,0 +1,275 @@
+import tkinter as tk
+from tkinter import messagebox
+import random
+
+# Размер поля
+SIZE = 10
+
+
+class SeaBattle:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Морской бой")
+        self.root.geometry("800x700")
+
+        # Поля игрока и компьютера
+        self.player_field = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+        self.computer_field = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+
+        # Счетчики попаданий
+        self.player_hits = 0
+        self.computer_hits = 0
+
+        # Флаг окончания игры
+        self.game_over = False
+
+        # Режим расстановки кораблей
+        self.setup_mode = True
+        self.ships_to_place = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]  # Корабли для размещения
+        self.current_ship_index = 0
+        self.current_direction = 'h'  # 'h' - горизонтально, 'v' - вертикально
+
+        # Расставляем корабли компьютера
+        self.place_ships_computer()
+
+        # Создаем интерфейс
+        self.create_ui()
+
+    def place_ship_on_field(self, row, col):
+        """Размещение корабля на поле игрока"""
+        if not self.setup_mode:
+            return
+
+        if self.current_ship_index >= len(self.ships_to_place):
+            return
+
+        ship_size = self.ships_to_place[self.current_ship_index]
+
+        if self.can_place_ship(self.player_field, row, col, ship_size, self.current_direction):
+            self.put_ship(self.player_field, row, col, ship_size, self.current_direction)
+            self.current_ship_index += 1
+
+            # Обновляем визуализацию
+            self.update_player_field_display()
+
+            # Проверяем, все ли корабли размещены
+            if self.current_ship_index >= len(self.ships_to_place):
+                self.setup_mode = False
+                self.info_label.config(text="Все корабли размещены! Нажмите 'Начать игру'")
+                if hasattr(self, 'start_button'):
+                    self.start_button.config(state="normal")
+            else:
+                next_ship = self.ships_to_place[self.current_ship_index]
+                self.info_label.config(text=f"Разместите корабль размером {next_ship}")
+        else:
+            self.info_label.config(text="Нельзя разместить корабль здесь!")
+
+    def place_ships_computer(self):
+        # Размещение кораблей компьютера
+        ships = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+        for ship_size in ships:
+            placed = False
+            while not placed:
+                row = random.randint(0, SIZE - 1)
+                col = random.randint(0, SIZE - 1)
+                direction = random.choice(['h', 'v'])
+
+                if self.can_place_ship(self.computer_field, row, col, ship_size, direction):
+                    self.put_ship(self.computer_field, row, col, ship_size, direction)
+                    placed = True
+
+    def can_place_ship(self, field, row, col, size, direction):
+        if direction == 'h':
+            if col + size > SIZE:
+                return False
+            for c in range(col, col + size):
+                if field[row][c] != 0:
+                    return False
+        else:  # вертикально
+            if row + size > SIZE:
+                return False
+            for r in range(row, row + size):
+                if field[r][col] != 0:
+                    return False
+        return True
+
+    def put_ship(self, field, row, col, size, direction):
+        if direction == 'h':
+            for c in range(col, col + size):
+                field[row][c] = 1
+        else:
+            for r in range(row, row + size):
+                field[r][col] = 1
+
+    def update_player_field_display(self):
+        """Обновление отображения поля игрока"""
+        for i in range(SIZE):
+            for j in range(SIZE):
+                btn = self.player_buttons[i][j]
+                if self.player_field[i][j] == 1:
+                    btn.config(bg="gray")
+                else:
+                    btn.config(bg="lightblue")
+
+    def create_ui(self):
+        # Заголовок
+        title = tk.Label(self.root, text="Морской бой", font=("Arial", 20))
+        title.pack(pady=10)
+
+        # Фрейм с полями
+        fields_frame = tk.Frame(self.root)
+        fields_frame.pack(pady=20)
+
+        # Поле игрока
+        player_label = tk.Label(fields_frame, text="Ваше поле", font=("Arial", 12))
+        player_label.grid(row=0, column=0, padx=20)
+
+        self.player_buttons = []
+        player_frame = tk.Frame(fields_frame)
+        player_frame.grid(row=1, column=0, padx=20)
+
+        for i in range(SIZE):
+            row_buttons = []
+            for j in range(SIZE):
+                btn = tk.Button(player_frame, width=3, height=1, bg="lightblue",
+                                command=lambda r=i, c=j: self.place_ship_on_field(r, c))
+                btn.grid(row=i, column=j, padx=1, pady=1)
+                row_buttons.append(btn)
+            self.player_buttons.append(row_buttons)
+
+        # Поле компьютера
+        computer_label = tk.Label(fields_frame, text="Поле компьютера", font=("Arial", 12))
+        computer_label.grid(row=0, column=1, padx=20)
+
+        self.computer_buttons = []
+        computer_frame = tk.Frame(fields_frame)
+        computer_frame.grid(row=1, column=1, padx=20)
+
+        for i in range(SIZE):
+            row_buttons = []
+            for j in range(SIZE):
+                btn = tk.Button(computer_frame, width=3, height=1, bg="lightblue",
+                                state="disabled", command=lambda r=i, c=j: self.shoot(r, c))
+                btn.grid(row=i, column=j, padx=1, pady=1)
+                row_buttons.append(btn)
+            self.computer_buttons.append(row_buttons)
+
+        # Управление направлением
+        self.direction_frame = tk.Frame(self.root)
+        self.direction_frame.pack(pady=5)
+
+        direction_label = tk.Label(self.direction_frame, text="Направление:", font=("Arial", 10))
+        direction_label.pack(side=tk.LEFT, padx=5)
+
+        self.direction_var = tk.StringVar(value="Горизонтально")
+        direction_h = tk.Radiobutton(self.direction_frame, text="Горизонтально",
+                                     variable=self.direction_var, value="Горизонтально",
+                                     command=lambda: self.set_direction('h'))
+        direction_h.pack(side=tk.LEFT, padx=5)
+
+        direction_v = tk.Radiobutton(self.direction_frame, text="Вертикально",
+                                     variable=self.direction_var, value="Вертикально",
+                                     command=lambda: self.set_direction('v'))
+        direction_v.pack(side=tk.LEFT, padx=5)
+
+        # Кнопка начала игры
+        self.start_button = tk.Button(self.root, text="Начать игру",
+                                      command=self.start_game, state="disabled", font=("Arial", 12))
+        self.start_button.pack(pady=5)
+
+        # Информация
+        if self.setup_mode:
+            next_ship = self.ships_to_place[self.current_ship_index]
+            self.info_label = tk.Label(self.root, text=f"Разместите корабль размером {next_ship}",
+                                       font=("Arial", 12))
+        else:
+            self.info_label = tk.Label(self.root, text="Ваш ход. Кликните по полю компьютера",
+                                       font=("Arial", 12))
+        self.info_label.pack(pady=10)
+
+    def set_direction(self, direction):
+        """Установка направления корабля"""
+        self.current_direction = direction
+
+    def start_game(self):
+        """Начало игры"""
+        self.setup_mode = False
+        # Делаем поле игрока неактивным для кликов
+        for i in range(SIZE):
+            for j in range(SIZE):
+                self.player_buttons[i][j].config(state="disabled")
+
+        # Активируем поле компьютера для выстрелов
+        for i in range(SIZE):
+            for j in range(SIZE):
+                self.computer_buttons[i][j].config(state="normal")
+
+        # Скрываем элементы расстановки
+        self.start_button.pack_forget()
+        self.direction_frame.pack_forget()
+
+        self.info_label.config(text="Ваш ход. Кликните по полю компьютера")
+
+    def shoot(self, row, col):
+        if self.setup_mode or self.game_over:
+            return
+
+        # Если уже стреляли сюда
+        btn = self.computer_buttons[row][col]
+        if btn['bg'] in ['red', 'white']:
+            return
+
+        # Выстрел игрока
+        if self.computer_field[row][col] == 1:
+            btn.config(bg="red", text="X")
+            self.player_hits += 1
+            self.info_label.config(text="Попадание! Стреляйте еще!")
+
+            # Проверка победы
+            if self.player_hits >= 20:  # Всего клеток кораблей
+                self.game_over = True
+                messagebox.showinfo("Победа!", "Вы выиграли!")
+                self.root.quit()
+        else:
+            btn.config(bg="white")
+            self.info_label.config(text="Промах! Ход компьютера...")
+            self.root.update()
+            self.root.after(500, self.computer_turn)
+
+    def computer_turn(self):
+        if self.game_over:
+            return
+
+        # Компьютер стреляет случайно
+        while True:
+            row = random.randint(0, SIZE - 1)
+            col = random.randint(0, SIZE - 1)
+
+            btn = self.player_buttons[row][col]
+            if btn['bg'] not in ['red', 'white']:
+                break
+
+        # Выстрел компьютера
+        if self.player_field[row][col] == 1:
+            btn.config(bg="red", text="X")
+            self.computer_hits += 1
+            self.info_label.config(text="Компьютер попал! Ваш ход.")
+
+            # Проверка проигрыша
+            if self.computer_hits >= 20:
+                self.game_over = True
+                messagebox.showinfo("Поражение!", "Компьютер выиграл!")
+                self.root.quit()
+            else:
+                self.root.after(500, self.computer_turn)  # Компьютер стреляет еще раз
+        else:
+            btn.config(bg="white")
+            self.info_label.config(text="Компьютер промахнулся! Ваш ход.")
+
+    def run(self):
+        self.root.mainloop()
+
+
+if __name__ == "__main__":
+    game = SeaBattle()
+    game.run()
